@@ -7,13 +7,11 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.ObjectInputStream;
+import java.io.*;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.Set;
-import java.util.TreeMap;
+
 
 public class NoteJFrame extends JFrame implements ActionListener {
 
@@ -50,36 +48,41 @@ public class NoteJFrame extends JFrame implements ActionListener {
             new AddJFrame();
 
         } else if (obj == update) {
-            //逻辑：
-            //1.先判断用户有没有选择表格中的数据
-            //2.如果没有选择，弹框提示：未选择。此时提示的弹框用showJDialog方法即可
-            //3.如果选择了，跳转添加界面
-            //获取用户选择了表格中的哪一行
-            //i = 0: 表示用户选择了第一行
-            //i = 1: 表示用户选择了第一行
-            //i有两个作用：
-            //i小于0，表示用户没有选择，此时无法修改
-            //i大于等于0：通过这个行数就可以获取二维数组中对应的数据
             int i = table.getSelectedRow();
             if (i < 0) {
-
+                showJDialog("请选择正确的行");
+            } else {
+                this.setVisible(false);
+                new UpdateJFrame(i);
             }
-
-
         } else if (obj == delete) {
-            System.out.println("删除按钮被点击");
             //逻辑：
             //1.先判断用户有没有选择表格中的数据
             //2.如果没有选择，弹框提示：未选择。此时提示的弹框用showJDialog方法即可
             //3.如果选择了，弹框提示：是否确定删除。此时提示的弹框用showChooseJDialog方法
-
+            int i = table.getSelectedRow();
+            if (i < 0) {
+                showJDialog("请选择正确的行");
+            } else {
+                int j = showChooseJDialog();
+                if (j == 0) {
+                    try {
+                        deleteData(i);
+                        showJDialog("删除成功");
+                        this.setVisible(false);
+                        new NoteJFrame();
+                    } catch (IOException ex) {
+                        throw new RuntimeException(ex);
+                    } catch (ClassNotFoundException ex) {
+                        throw new RuntimeException(ex);
+                    }
+                }
+            }
 
             //作用：展示一个带有确定和取消按钮的弹框
             //方法的返回值：0 表示用户点击了确定
             //             1 表示用户点击了取消
             //该弹框用于用户删除时候，询问用户是否确定删除
-            int i = showChooseJDialog();
-            System.out.println(i);
 
 
         } else if (obj == exportItem) {
@@ -89,6 +92,19 @@ public class NoteJFrame extends JFrame implements ActionListener {
             System.out.println("菜单的导入功能");
 
         }
+    }
+
+    private void deleteData(int i) throws IOException, ClassNotFoundException {
+        File file = new File("save/record.data");
+        ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file));
+        ArrayList<Record> list = (ArrayList<Record>) ois.readObject();
+        System.out.println(list.size());
+        ois.close();
+        list.remove(i);
+        System.out.println(list.size());
+        ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file));
+        oos.writeObject(list);
+        oos.close();
     }
 
     //初始化组件
@@ -102,20 +118,29 @@ public class NoteJFrame extends JFrame implements ActionListener {
         //定义表格的标题
         Object[] tableTitles = {"编号", "标题", "正文"};
         //定义表格的内容
-        TreeMap<String, String> tp = readRecord();
-        //二维数组中的每一个一维数组，是表格里面的一行数据
-        Object[][] tabledatas = new Object[tp.size()][3];
-        int i = 0;
-        Set<String> strings = tp.keySet();
-        for (String string : strings) {
-            tabledatas[i][0] = "编号" + i;
-            tabledatas[i][1] = string;
-            tabledatas[i++][2] = tp.get(string);
+        LinkedHashMap<String, String> tp = readRecord();
+        if (tp == null) {
+            Object[][] tabledatas = {};
+            //定义表格组件
+            //并给表格设置标题和内容
+            table = new JTable(tabledatas, tableTitles);
+            table.setBounds(40, 70, 504, 380);
+        } else {
+            Object[][] tabledatas = new Object[tp.size()][3];
+            //二维数组中的每一个一维数组，是表格里面的一行数据
+            int i = 0;
+            Set<String> strings = tp.keySet();
+            for (String string : strings) {
+                tabledatas[i][0] = "编号" + i;
+                tabledatas[i][1] = string;
+                tabledatas[i++][2] = tp.get(string);
+            }
+            //定义表格组件
+            //并给表格设置标题和内容
+            table = new JTable(tabledatas, tableTitles);
+            table.setBounds(40, 70, 504, 380);
         }
-        //定义表格组件
-        //并给表格设置标题和内容
-        table = new JTable(tabledatas, tableTitles);
-        table.setBounds(40, 70, 504, 380);
+
 
         //创建可滚动的组件，并把表格组件放在滚动组件中间
         //好处：如果表格中数据过多，可以进行上下滚动
@@ -142,9 +167,13 @@ public class NoteJFrame extends JFrame implements ActionListener {
         this.getContentPane().add(delete);
     }
 
-    private TreeMap<String, String> readRecord() throws IOException, ClassNotFoundException {
-        ObjectInputStream ois = new ObjectInputStream(new FileInputStream("save/record.data"));
-        TreeMap<String, String> tp = new TreeMap<>();
+    private LinkedHashMap<String, String> readRecord() throws IOException, ClassNotFoundException {
+        File file = new File("save/record.data");
+        if (!file.exists()) {
+            return null;
+        }
+        ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file));
+        LinkedHashMap<String, String> tp = new LinkedHashMap<>();
         ArrayList<Record> list = (ArrayList<Record>) ois.readObject();
         for (Record record : list) {
             tp.put(record.getTitle(), record.getContent());

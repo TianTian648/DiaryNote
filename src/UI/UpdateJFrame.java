@@ -1,11 +1,14 @@
 package UI;
 
 
+import Domain.Record;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.IOException;
+import java.io.*;
+import java.util.ArrayList;
 
 public class UpdateJFrame extends JFrame implements ActionListener {
     //定义标题输入框
@@ -19,8 +22,9 @@ public class UpdateJFrame extends JFrame implements ActionListener {
 
     //定义取消按钮
     JButton cancel = new JButton("取消");
+    int number;
 
-    public UpdateJFrame(){
+    public UpdateJFrame(int number){
         //初始化界面
         initFrame();
 
@@ -29,15 +33,29 @@ public class UpdateJFrame extends JFrame implements ActionListener {
 
         //让界面展示出来
         this.setVisible(true);
+        this.number = number;
     }
 
     @Override
     public void actionPerformed(ActionEvent e) {
         Object obj = e.getSource();
         if(obj == update){
-            updateRecord(titleText.getText(), contentText.getText());
+            try {
+                updateRecord(titleText.getText(), contentText.getText());
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
+            } catch (ClassNotFoundException ex) {
+                throw new RuntimeException(ex);
+            }
             showDialog("修改成功");
             this.setVisible(false);
+            try {
+                new NoteJFrame();
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
+            } catch (ClassNotFoundException ex) {
+                throw new RuntimeException(ex);
+            }
             try {
                 new NoteJFrame();
             } catch (IOException ex) {
@@ -57,7 +75,14 @@ public class UpdateJFrame extends JFrame implements ActionListener {
         }
     }
 
-    private void updateRecord(String title, String content) {
+    private void updateRecord(String title, String content) throws IOException, ClassNotFoundException {
+        ObjectInputStream ois = new ObjectInputStream(new FileInputStream("save/record.data"));
+        ArrayList<Record> list = (ArrayList<Record>)ois.readObject();
+        ois.close();
+        list.set(number, new Record(title, content));
+        ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("save/record.data"));
+        oos.writeObject(list);
+        oos.close();
     }
 
     private void initView() {
