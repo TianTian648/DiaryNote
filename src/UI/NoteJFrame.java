@@ -11,6 +11,8 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Set;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 
 public class NoteJFrame extends JFrame implements ActionListener {
@@ -87,9 +89,45 @@ public class NoteJFrame extends JFrame implements ActionListener {
 
         } else if (obj == exportItem) {
             System.out.println("菜单的导出功能");
+            File file = new File("save/record.data");
+            ObjectInputStream ois = null;
+            ArrayList<Record> list;
+            try {
+                ois = new ObjectInputStream(new FileInputStream(file));
+                list = (ArrayList<Record>)ois.readObject();
+            } catch (IOException | ClassNotFoundException ex) {
+                throw new RuntimeException(ex);
+            }
+            ArrayList<String> list1 = new ArrayList<>();
+            for (Record record : list) {
+                list1.add("title=" + record.getTitle() +"&content=" + record.getContent());
+            }
+            try {
+                BufferedWriter bw = new BufferedWriter(new FileWriter("save/Info.txt"));
+                for (String s : list1) {
+                    bw.write(s);
+                    bw.newLine();
+                }
+                bw.close();
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
+            }
+            try {
+                ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(new File("save", "Info.zip")));
+                ZipEntry entry = new ZipEntry("Info.txt");
+                zos.putNextEntry(entry);
+                FileInputStream fis = new FileInputStream("save/Info.txt");
+                int b;
+                while((b = fis.read()) != -1){
+                    zos.write(b);
+                }
+                zos.closeEntry();
+                zos.close();
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
+            }
 
         } else if (obj == importItem) {
-            System.out.println("菜单的导入功能");
 
         }
     }
